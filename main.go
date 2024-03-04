@@ -12,7 +12,7 @@ type config struct {
 	modifier   int
 }
 
-// Abs возвращает модуль числа
+// Abs returns the modulus of a number
 func Abs(number int) int {
 	if number < 0 {
 		return number * -1
@@ -21,7 +21,7 @@ func Abs(number int) int {
 	return number
 }
 
-// isSuccess проверяет является ли комбинация успешной
+// isSuccess checks whether the combination is successful
 func isSuccess(threshold, successNum int, combination []int) bool {
 	aboveThreshold := 0
 	for _, dice := range combination {
@@ -33,21 +33,21 @@ func isSuccess(threshold, successNum int, combination []int) bool {
 	return aboveThreshold >= successNum
 }
 
-// generateModifiers возвращает слайс со всеми комбинациями распределения модификатора по коробкам
+// generateModifiers returns a slice with all combinations of modifier distribution over dices
 func generateModifiers(modifier, diceNum int) [][]int {
 	absMod := Abs(modifier)
 	if diceNum == 1 {
-		// Если осталась одна коробка, возвращаем все оставшиеся единицы в ней
+		// If there is one dice left, return all remaining units in it
 		return [][]int{{absMod}}
 	}
 
-	// Инициализация начального состояния для первой коробки
+	// Initialization of the initial state for the first dice
 	initialCombinations := make([][]int, absMod+1)
 	for i := range initialCombinations {
 		initialCombinations[i] = []int{i}
 	}
 
-	// Построение комбинаций для каждой коробки
+	// Build combinations for each dice
 	for box := 2; box <= diceNum; box++ {
 		newCombinations := [][]int{}
 		for _, combo := range initialCombinations {
@@ -57,10 +57,10 @@ func generateModifiers(modifier, diceNum int) [][]int {
 			}
 			for i := 0; i <= absMod-sum; i++ {
 				if box == diceNum && sum+i != absMod {
-					continue // Для последней коробки убедимся, что используем все единицы
+					continue // For the last dice, make sure we use all units
 				}
 
-				// Добавляем новое значение к существующим комбинациям
+				// Add a new value to existing combinations
 				newCombo := append([]int(nil), combo...)
 				newCombo = append(newCombo, i)
 				newCombinations = append(newCombinations, newCombo)
@@ -69,7 +69,7 @@ func generateModifiers(modifier, diceNum int) [][]int {
 		initialCombinations = newCombinations
 	}
 
-	// Применяем модификацию для отрицательных модификаторов
+	// Apply modification for negative modifiers
 	if modifier < 0 {
 		for i, combo := range initialCombinations {
 			for j, value := range combo {
@@ -81,47 +81,48 @@ func generateModifiers(modifier, diceNum int) [][]int {
 	return initialCombinations
 }
 
-// generateCombinations создает все возможные комбинации
+// generateCombinations creates all possible combinations for a given number and type of dice.
+// Then sends them to a channel for processing.
 func generateCombinations(diceNum, sides int, combinationsChan chan<- []int) {
-	defer close(combinationsChan) // Закрываем канал по завершению функции
+	defer close(combinationsChan) // Close the channel at the end of the function
 
-	// Инициализируем начальную комбинацию с пустым списком
+	// Initialize initial combination with empty list
 	result := [][]int{{}}
 
-	// Для каждой кости в игре
+	// For every dice
 	for d := 0; d < diceNum; d++ {
 		newResult := [][]int{}
 
-		// Проходим по всем текущим комбинациям
+		// Go through all current combinations
 		for _, combo := range result {
 
-			// Добавляем к каждой комбинации все возможные значения текущей кости
+			// Add all possible values of the current dice to each combination
 			for s := 1; s <= sides; s++ {
 				newCombo := append([]int(nil), combo...)
 				newCombo = append(newCombo, s)
 
-				// Добавляем новую комбинацию во временный результат для следующего уровня
+				// Add the new combination to the temporary result for the next level
 				newResult = append(newResult, newCombo)
 			}
 		}
 
-		// Обновляем основной результат новыми комбинациями
+		// Update the main result with new combinations
 		result = newResult
 	}
 
-	// Выводим комбинации
+	// Display combinations
 	for _, combo := range result {
-		fmt.Printf("Сгенерировано: %v\n", combo)
+		fmt.Printf("Generated: %v\n", combo)
 	}
 
-	// После генерации всех комбинаций, отправляем их в канал
-	fmt.Printf("Начинаю проверку\n")
+	// After generating all combinations, send them to the channel
+	fmt.Printf("Starting processing\n")
 	for _, combo := range result {
 		combinationsChan <- combo
 	}
 }
 
-// summSlices поэлементно складывает слайсы, длина результирующего слайса равна длине первого слайса
+// summSlices summs the slides element by element, the length of the resulting slide is equal to the length of the first slide
 func summSlices(a, b []int) []int {
 	result := make([]int, len(a))
 	for i := range a {
@@ -131,52 +132,52 @@ func summSlices(a, b []int) []int {
 	return result
 }
 
-// processCombination возвращает может ли комбинация быть успешной с применением модификатора
+// processCombination returns whether the combination can succeed with the application of the modifier
 func processCombination(combination []int, modifierTable [][]int, threshold, successNum int) bool {
 
-	// Проходим по всем комбинациям модификаторов
+	// Go through all combinations of modifiers
 	for _, modCombo := range modifierTable {
 
-		// Складываем текущую комбинацию с модификатором
+		// Add the current combination with the modifier
 		modifiedCombo := summSlices(combination, modCombo)
 
-		// Проверяем, является ли модифицированная комбинация успешной
+		// Check whether the modified combination is successful
 		if isSuccess(threshold, successNum, modifiedCombo) {
-			return true // Возвращаем true, если комбинация успешна
+			return true // Return true if the combination is successful
 		}
 	}
 
-	return false // Возвращаем false, если ни одна комбинация не привела к успеху
+	return false // Return false if none of the combinations was successful
 }
 
 func main() {
 
-	//Задаем параметры
+	// Set parameters
 	cfg := config{
-		threshold:  4, //число, на кости считается успех, если выпало не меньше этого числа.
-		successNum: 3, //число костей, на которых должен выпасть успех (с учетом модификатора), чтобы результат броска считался успешным.
-		diceNum:    3, //число костей в броске.
-		sides:      6, //число граней каждой кости.
-		modifier:   1, //модификатор броска (может быть отрицательным).
+		threshold:  4, // dice is considered a success if at least this number is on
+		successNum: 3, // number of dice on which success must be rolled (taking into account the modifier) for the result of the roll to be considered successful.
+		diceNum:    3, // number of dice in the roll.
+		sides:      6, // number of faces of each dice
+		modifier:   1, // roll modifier (can be negative).
 	}
 
-	//Обнуляем счётчики
+	// Reset the counters
 	allCases := 0
 	succesCases := 0
 
-	//Генерируем таблицу модификатора
-	fmt.Printf("Генерирую таблицу всех вариантов распределения модификатора %v на количество костей=%v  \n", cfg.modifier, cfg.diceNum)
+	//Generate modifier table
+	fmt.Printf("Generate a table of all variants of the distribution of the modifier %v on the number of dice=%v  \n", cfg.modifier, cfg.diceNum)
 	modifierTable := generateModifiers(cfg.modifier, cfg.diceNum)
-	fmt.Printf("Таблица распределения модификатора %v на количество костей = %v  \n %v\n\n", cfg.modifier, cfg.diceNum, modifierTable)
+	fmt.Printf("Table of distribution of modifier %v on the number of dice = %v \n %v\n\n", cfg.modifier, cfg.diceNum, modifierTable)
 
-	//Создаем канал для обработки комбинаций
+	//Create a channel for processing combinations
 	combinationsChan := make(chan []int)
 
-	//Запускаем генератор
-	fmt.Printf("Генерирую все комбинации %vd%v\n", cfg.diceNum, cfg.sides)
+	//Start the generator
+	fmt.Printf("Generating all the combinations of %vd%v\n", cfg.diceNum, cfg.sides)
 	go generateCombinations(cfg.diceNum, cfg.sides, combinationsChan)
 
-	// Читаем комбинаций из канала и обрабатываем
+	// Read combinations from the channel and process them
 	for combo := range combinationsChan {
 		result := processCombination(combo, modifierTable, cfg.threshold, cfg.successNum)
 		fmt.Println(combo, ": ", result)
@@ -186,7 +187,7 @@ func main() {
 		allCases++
 	}
 
-	//Выводим результат
-	fmt.Printf("Успешных бросков %v из %v\n", succesCases, allCases)
-	fmt.Printf("Вероятность успеха при \n%+v \n=%v", cfg, float32(succesCases)/float32(allCases))
+	//Display the result
+	fmt.Printf("Successful rolls %v of %v\n", succesCases, allCases)
+	fmt.Printf("Probability of success at \n%+v \n=%v", cfg, float32(succesCases)/float32(allCases))
 }
